@@ -21,11 +21,13 @@ type alias Model = Description
 type alias Description =
   { inputs : List Input
   , outputs : List Output
+  , calculation : List InputValue -> Data
   }
-type alias Input = { name : String, domain : InputValue }
-type alias InputValue = String
+type alias Input = { name : String, domain : InputValueDomain }
+type alias InputValueDomain = String
+type alias InputValue = Float
 type alias Output = { name : String, x : String, y : String }
-
+type alias Data = { xs : List Float, ys : List Float }
 
 init : (Model, Cmd Msg)
 init =
@@ -38,6 +40,12 @@ init =
         , { name = "velocity", x = "time", y = "Dphi" }
         , { name = "phase", x = "phi", y = "Dphi" }
         ]
+    , calculation =
+        \_ ->
+          let xs_ = [ 0, 1, 2, 3, 4, 5, 4, 3, 2, 1 ] in
+            { xs = xs_
+            , ys = List.map (\x -> x * x) xs_
+            }
     }
   , Cmd.none
   )
