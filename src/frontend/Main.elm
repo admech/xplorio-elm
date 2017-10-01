@@ -75,7 +75,7 @@ type Msg
   | ShowError String
   | AddInput
   | EnterInputName String
-  | EnterNewInputDomain InputDomain
+  | SetNewInputDomain InputDomain
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -89,7 +89,7 @@ update msg model =
       ( { model | newInputName = name }
       , Cmd.none
       )
-    EnterNewInputDomain domain ->
+    SetNewInputDomain domain ->
       ( { model | newInputDomain = domain }
       , Cmd.none
       )
@@ -130,11 +130,27 @@ viewDefine model =
     [ Html.h2 [] [ Html.text "Define" ]
     , Html.h3 [] [ Html.text "Inputs:" ]
     , Html.ul [] (List.map viewInput model.inputs)
+    , Html.fieldset []
+        [ radio "Real" (SetNewInputDomain Real)
+        , radio "Integer" (SetNewInputDomain Integer)
+        , radio "Natural" (SetNewInputDomain Natural)
+        , radio "Range" (SetNewInputDomain (Range -1 1))
+        , radio "Variants" (SetNewInputDomain (Variants [1, 2, 3]))
+        ]
     , Html.input [ placeholder model.newInputName, onInput EnterInputName ] []
     , viewNewInputDomain model.newInputDomain
     , Html.button [ onClick AddInput ] [ Html.text "Add" ] 
     , Html.h3 [] [ Html.text "Outputs:" ]
     , Html.ul [] (List.map viewOutput model.outputs)
+    ]
+
+radio : String -> msg -> Html msg
+radio value msg =
+  Html.label
+    [ style [("padding", "20px")]
+    ]
+    [ Html.input [ type_ "radio", name "new-input-domain-type", onClick msg ] []
+    , Html.text value
     ]
 
 viewInput : Input -> Html Msg
@@ -146,23 +162,50 @@ stringFromDomain domain =
   case domain of
     Range min max -> "[" ++ (toString min) ++ ", " ++ (toString max) ++ "]"
     Variants vs -> "{" ++ (String.join ", " (List.map toString vs)) ++ "}"
-    other -> toString other
+    Real -> "ℝ"
+    Integer -> "ℤ"
+    Natural -> "ℕ"
 
 viewNewInputDomain : InputDomain -> Html Msg
 viewNewInputDomain domain = 
   case domain of
     Range min max -> 
       Html.div []
-        [ Html.input [ placeholder "min", onInput (\fieldValue -> enterNewInputDomain (\it -> Range it max) fieldValue) ] []
-        , Html.input [ placeholder "max", onInput (\fieldValue -> enterNewInputDomain (\it -> Range min it) fieldValue) ] []
+        [ Html.input [ placeholder "-1", onInput (validateFloat (\it -> SetNewInputDomain (Range it max))) ] []
+        , Html.input [ placeholder "1", onInput (validateFloat (\it -> SetNewInputDomain (Range min it))) ] []
         ]
-    _ -> Html.text "meh"
+    Variants vs ->
+      Html.div []
+        [ Html.input [ placeholder "2.7, 1.5, 3", onInput (validateCommaSeparatedFloats (\vs -> SetNewInputDomain (Variants vs))) ] []
+        ]
+    -- https://en.wikipedia.org/wiki/Mathematical_operators_and_symbols_in_Unicode
+    Real -> Html.text "ℝ"
+    Integer -> Html.text "ℤ"
+    Natural -> Html.text "ℕ"
 
-enterNewInputDomain : (Float -> InputDomain) -> String -> Msg
-enterNewInputDomain create val =
-  case String.toFloat val of
-    Ok f -> EnterNewInputDomain (create f)
+validateFloat : (Float -> Msg) -> String -> Msg
+validateFloat viewFun str =
+  case String.toFloat str of
+    Ok f -> viewFun f
     Err s -> ShowError s
+
+validateCommaSeparatedFloats : (List Float -> Msg) -> String -> Msg
+validateCommaSeparatedFloats viewFun str =
+  let (goods, bads) = str
+    |> String.split ","
+    |> List.map String.trim
+    |> List.filter (not << String.isEmpty)
+    |> List.map String.toFloat
+    |> List.partition (\mbF -> case mbF of
+        Ok _ -> True
+        Err _ -> False )
+  in case bads of
+    [] -> let vs = 
+            goods
+              |> List.map Result.toMaybe
+              |> List.map (Maybe.withDefault 9999999) -- fixme: partition does not extact values :(
+          in viewFun vs
+    _ -> ShowError ("could not parse variants from: " ++ (toString bads))
       
 
 viewOutput : Output -> Html Msg
