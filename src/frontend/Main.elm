@@ -3,6 +3,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Svg
 import Svg.Attributes
+import Dict exposing (Dict)
 
 
 main =
@@ -20,7 +21,7 @@ main =
 
 type alias Model = 
   { -- Description
-    inputs : List Input
+    inputs : Inputs
   , outputs : List Output
   , calculation : List InputValue -> Data
     -- Forms
@@ -30,7 +31,7 @@ type alias Model =
   , error : Maybe String
   }
 
-type alias Input = { name : String, domain : InputDomain }
+type alias Inputs = Dict String InputDomain
 type InputDomain
   = Range Float Float 
   | Variants (List Float)
@@ -42,9 +43,9 @@ type alias Data = { xs : List Float, ys : List Float }
 init : (Model, Cmd Msg)
 init =
   ( { -- Description
-      inputs =
-        [ { name = "phi0", domain = Range -1 1 }
-        , { name = "t_max", domain = Variants [ 10, 100, 1000 ] }
+      inputs = Dict.fromList
+        [ ( "phi0", Range -1 1 )
+        , ( "t_max", Variants [ 10, 100, 1000 ] )
         ]
     , outputs =
         [ { name = "angle", x = "time", y = "phi" }
@@ -76,6 +77,7 @@ type Msg
   | AddInput
   | EnterInputName String
   | SetNewInputDomain InputDomain
+  | DeleteInput String
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -94,9 +96,13 @@ update msg model =
       , Cmd.none
       )
     AddInput ->
-      ( { model | inputs = (Input model.newInputName model.newInputDomain) :: model.inputs }
+      ( { model | inputs = Dict.insert model.newInputName model.newInputDomain model.inputs }
       , Cmd.none
       )
+    DeleteInput name ->
+      ( { model | inputs = Dict.remove name model.inputs }
+      , Cmd.none
+      )      
 
 
 
@@ -129,7 +135,7 @@ viewDefine model =
   Html.div []
     [ Html.h2 [] [ Html.text "Define" ]
     , Html.h3 [] [ Html.text "Inputs:" ]
-    , Html.ul [] (List.map viewInput model.inputs)
+    , Html.ul [] (htmlFromInputs model.inputs)
     , Html.fieldset []
         [ radio "Real" (SetNewInputDomain Real)
         , radio "Integer" (SetNewInputDomain Integer)
@@ -144,6 +150,14 @@ viewDefine model =
     , Html.ul [] (List.map viewOutput model.outputs)
     ]
 
+htmlFromInputs : Inputs -> List (Html Msg)
+htmlFromInputs inputs =
+  (List.map viewInput (entriesFromDict inputs))
+
+entriesFromDict : Dict comparable b -> List (comparable, b)
+entriesFromDict dict =
+  List.map2 (\u -> \v -> (u, v)) (Dict.keys dict) (Dict.values dict)
+
 radio : String -> msg -> Html msg
 radio value msg =
   Html.label
@@ -153,9 +167,12 @@ radio value msg =
     , Html.text value
     ]
 
-viewInput : Input -> Html Msg
-viewInput { name, domain } =
-  Html.li [] [ Html.text (name ++ " ∈ " ++ stringFromDomain domain) ]
+viewInput : (String, InputDomain) -> Html Msg
+viewInput ( name, domain ) =
+  Html.li []
+    [ Html.text (name ++ " ∈ " ++ stringFromDomain domain)
+    , Html.button [ onClick (DeleteInput name) ] [ Html.text "x" ]
+    ]
 
 stringFromDomain : InputDomain -> String
 stringFromDomain domain =
@@ -219,7 +236,7 @@ viewSelect : Model -> Html Msg
 viewSelect model =
   Html.div []
     [ Html.h2 [] [ Html.text "Select" ]
-    , Html.ul [] (List.map viewInput model.inputs)
+    , Html.ul [] (htmlFromInputs model.inputs)
     ]
 
 
