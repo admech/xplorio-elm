@@ -30,8 +30,8 @@ Now go get the models running!
 ## To do:
 
 1. Define:
-    ~~1. adding and removing `input`s,~~
-    ~~2. defining an `input`'s domain (range or set),~~
+    1. ~~adding and removing `input`s,~~
+    2. ~~defining an `input`'s domain (range or set),~~
     3. adding and removing `output`s,
     4. defining the calculation:
          entering a github repo and showing how it will be launched,
