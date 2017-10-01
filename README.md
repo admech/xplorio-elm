@@ -8,19 +8,19 @@ Be awesome at modeling.
 ## Workflow:
 
 1. __Define__
-   the `model`'s `inputs` (names and domains), `output`s (named 2D series) and the `calculation` (a function mapping a set of concrete values of `input`s to result: a set of concrete 2D series for the `output`s))
+   the `model`'s `inputs` (names and domains), `output`s (named 2D series) and the `calculation` (a function mapping a set of concrete values of `input`s to a `result`: a set of concrete 2D series for the `output`s))
 
 2. __Select__
-   for which input values you'd like to have results: choose a subset of each `input`'s domain - and Xplorio will sweep through all possible sets of `input`s' values in there. You can choose several such subsets.
+   for which input values you'd like to have `result`s: choose a subset of each `input`'s domain -- and Xplorio will sweep through all possible sets of `input`s' values in there. You can choose several such subsets.
 
 3. __Explore__
-   results for different parameters: create charts of `output`'s values for the `input`s of interest.
+   `result`s for different parameters: create charts of `output`'s values for the `input`s of interest.
 
 The `result`s of the `calculation`s are persisted, so what you do after defining the model is: simulate for some set of `input`s, explore some charts from the `results`, order more `calculation`s as required, maybe update the `model` and start over, ultimately getting a full detailed understanding of your system's behavior.
 
 __You are saved from all the hassle__ of:
 * setting up a high-performance distributed computation environment,
-* scheduling `computation`s on many workers and retrieving results,
+* scheduling computations on many workers and retrieving results,
 * managing storage of data points, charts and corresponding input parameters.
 
 Now go get the models running!
