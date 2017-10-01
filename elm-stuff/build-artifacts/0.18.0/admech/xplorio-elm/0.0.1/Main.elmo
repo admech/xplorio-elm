@@ -1,0 +1,235 @@
+var _admech$xplorio_elm$Main$viewXploreOutput = function (_p0) {
+	var _p1 = _p0;
+	return A2(
+		_elm_lang$html$Html$li,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: _elm_lang$html$Html$text(_p1.name),
+			_1: {ctor: '[]'}
+		});
+};
+var _admech$xplorio_elm$Main$viewXplore = function (model) {
+	return A2(
+		_elm_lang$html$Html$div,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: A2(
+				_elm_lang$html$Html$h2,
+				{ctor: '[]'},
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html$text('Xplore'),
+					_1: {ctor: '[]'}
+				}),
+			_1: {
+				ctor: '::',
+				_0: A2(
+					_elm_lang$html$Html$ul,
+					{ctor: '[]'},
+					A2(_elm_lang$core$List$map, _admech$xplorio_elm$Main$viewXploreOutput, model.outputs)),
+				_1: {ctor: '[]'}
+			}
+		});
+};
+var _admech$xplorio_elm$Main$viewOutput = function (_p2) {
+	var _p3 = _p2;
+	return A2(
+		_elm_lang$html$Html$li,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: _elm_lang$html$Html$text(
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					_p3.name,
+					A2(
+						_elm_lang$core$Basics_ops['++'],
+						' = ',
+						A2(
+							_elm_lang$core$Basics_ops['++'],
+							_p3.y,
+							A2(
+								_elm_lang$core$Basics_ops['++'],
+								'(',
+								A2(_elm_lang$core$Basics_ops['++'], _p3.x, ')')))))),
+			_1: {ctor: '[]'}
+		});
+};
+var _admech$xplorio_elm$Main$viewInput = function (_p4) {
+	var _p5 = _p4;
+	return A2(
+		_elm_lang$html$Html$li,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: _elm_lang$html$Html$text(
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					_p5.name,
+					A2(_elm_lang$core$Basics_ops['++'], ' ∈ ', _p5.domain))),
+			_1: {ctor: '[]'}
+		});
+};
+var _admech$xplorio_elm$Main$viewSelect = function (model) {
+	return A2(
+		_elm_lang$html$Html$div,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: A2(
+				_elm_lang$html$Html$h2,
+				{ctor: '[]'},
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html$text('Select'),
+					_1: {ctor: '[]'}
+				}),
+			_1: {
+				ctor: '::',
+				_0: A2(
+					_elm_lang$html$Html$ul,
+					{ctor: '[]'},
+					A2(_elm_lang$core$List$map, _admech$xplorio_elm$Main$viewInput, model.inputs)),
+				_1: {ctor: '[]'}
+			}
+		});
+};
+var _admech$xplorio_elm$Main$viewDefine = function (model) {
+	return A2(
+		_elm_lang$html$Html$div,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: A2(
+				_elm_lang$html$Html$h2,
+				{ctor: '[]'},
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html$text('Define'),
+					_1: {ctor: '[]'}
+				}),
+			_1: {
+				ctor: '::',
+				_0: A2(
+					_elm_lang$html$Html$h3,
+					{ctor: '[]'},
+					{
+						ctor: '::',
+						_0: _elm_lang$html$Html$text('Inputs:'),
+						_1: {ctor: '[]'}
+					}),
+				_1: {
+					ctor: '::',
+					_0: A2(
+						_elm_lang$html$Html$ul,
+						{ctor: '[]'},
+						A2(_elm_lang$core$List$map, _admech$xplorio_elm$Main$viewInput, model.inputs)),
+					_1: {
+						ctor: '::',
+						_0: A2(
+							_elm_lang$html$Html$h3,
+							{ctor: '[]'},
+							{
+								ctor: '::',
+								_0: _elm_lang$html$Html$text('Outputs:'),
+								_1: {ctor: '[]'}
+							}),
+						_1: {
+							ctor: '::',
+							_0: A2(
+								_elm_lang$html$Html$ul,
+								{ctor: '[]'},
+								A2(_elm_lang$core$List$map, _admech$xplorio_elm$Main$viewOutput, model.outputs)),
+							_1: {ctor: '[]'}
+						}
+					}
+				}
+			}
+		});
+};
+var _admech$xplorio_elm$Main$view = function (model) {
+	return A2(
+		_elm_lang$html$Html$div,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: A2(
+				_elm_lang$html$Html$h1,
+				{ctor: '[]'},
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html$text('Xplorio'),
+					_1: {ctor: '[]'}
+				}),
+			_1: {
+				ctor: '::',
+				_0: _admech$xplorio_elm$Main$viewDefine(model),
+				_1: {
+					ctor: '::',
+					_0: _admech$xplorio_elm$Main$viewSelect(model),
+					_1: {
+						ctor: '::',
+						_0: _admech$xplorio_elm$Main$viewXplore(model),
+						_1: {ctor: '[]'}
+					}
+				}
+			}
+		});
+};
+var _admech$xplorio_elm$Main$update = F2(
+	function (msg, model) {
+		var _p6 = msg;
+		return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+	});
+var _admech$xplorio_elm$Main$init = {
+	ctor: '_Tuple2',
+	_0: {
+		inputs: {
+			ctor: '::',
+			_0: {name: 'phi0', domain: '[-pi, pi]'},
+			_1: {
+				ctor: '::',
+				_0: {name: 't_max', domain: '{10, 100, 1000}'},
+				_1: {ctor: '[]'}
+			}
+		},
+		outputs: {
+			ctor: '::',
+			_0: {name: 'angle', x: 'time', y: 'phi'},
+			_1: {
+				ctor: '::',
+				_0: {name: 'velocity', x: 'time', y: 'Dphi'},
+				_1: {
+					ctor: '::',
+					_0: {name: 'phase', x: 'phi', y: 'Dphi'},
+					_1: {ctor: '[]'}
+				}
+			}
+		}
+	},
+	_1: _elm_lang$core$Platform_Cmd$none
+};
+var _admech$xplorio_elm$Main$main = _elm_lang$html$Html$program(
+	{
+		init: _admech$xplorio_elm$Main$init,
+		view: _admech$xplorio_elm$Main$view,
+		update: _admech$xplorio_elm$Main$update,
+		subscriptions: function (model) {
+			return _elm_lang$core$Platform_Sub$none;
+		}
+	})();
+var _admech$xplorio_elm$Main$Description = F2(
+	function (a, b) {
+		return {inputs: a, outputs: b};
+	});
+var _admech$xplorio_elm$Main$Input = F2(
+	function (a, b) {
+		return {name: a, domain: b};
+	});
+var _admech$xplorio_elm$Main$Output = F3(
+	function (a, b, c) {
+		return {name: a, x: b, y: c};
+	});
+var _admech$xplorio_elm$Main$DoNothing = {ctor: 'DoNothing'};
