@@ -22,7 +22,7 @@ main =
 type alias Model = 
   { -- Description
     inputs : Inputs
-  , outputs : List Output
+  , outputs : Outputs
   , calculation : List InputValue -> Data
     -- Forms
   , newInputName : String
@@ -37,7 +37,8 @@ type InputDomain
   | Variants (List Float)
   | Real | Integer | Natural
 type alias InputValue = Float
-type alias Output = { name : String, x : String, y : String }
+type alias Outputs = Dict String { x : AxisDeclaration, y : AxisDeclaration }
+type alias AxisDeclaration = { name : String, valueMapping : String }
 type alias Data = { xs : List Float, ys : List Float }
 
 init : (Model, Cmd Msg)
@@ -47,10 +48,10 @@ init =
         [ ( "phi0", Range -1 1 )
         , ( "t_max", Variants [ 10, 100, 1000 ] )
         ]
-    , outputs =
-        [ { name = "angle", x = "time", y = "phi" }
-        , { name = "velocity", x = "time", y = "Dphi" }
-        , { name = "phase", x = "phi", y = "Dphi" }
+    , outputs = Dict.fromList
+        [ ( "angle", { x = AxisDeclaration "time" "A", y = AxisDeclaration "phi" "B" } )
+        , ( "velocity", { x = AxisDeclaration "time" "A", y = AxisDeclaration "Dphi" "C" } )
+        , ( "phase", { x = AxisDeclaration "phi" "B", y = AxisDeclaration "Dphi" "C" } )
         ]
     , calculation =
         \_ ->
@@ -135,33 +136,33 @@ viewDefine model =
   Html.div []
     [ Html.h2 [] [ Html.text "Define" ]
     , Html.h3 [] [ Html.text "Inputs:" ]
-    , Html.ul [] (htmlFromInputs model.inputs)
+    , Html.ul [] ( htmlFromDict model.inputs viewInput )
     , Html.fieldset []
-        [ radio "Real" (SetNewInputDomain Real)
-        , radio "Integer" (SetNewInputDomain Integer)
-        , radio "Natural" (SetNewInputDomain Natural)
-        , radio "Range" (SetNewInputDomain (Range -1 1))
-        , radio "Variants" (SetNewInputDomain (Variants [1, 2, 3]))
+        [ radio "Real" ( SetNewInputDomain Real )
+        , radio "Integer" ( SetNewInputDomain Integer )
+        , radio "Natural" ( SetNewInputDomain Natural )
+        , radio "Range" ( SetNewInputDomain ( Range -1 1 ) )
+        , radio "Variants" ( SetNewInputDomain ( Variants [ 1, 2, 3 ] ) )
         ]
     , Html.input [ placeholder model.newInputName, onInput EnterInputName ] []
     , viewNewInputDomain model.newInputDomain
     , Html.button [ onClick AddInput ] [ Html.text "Add" ] 
     , Html.h3 [] [ Html.text "Outputs:" ]
-    , Html.ul [] (List.map viewOutput model.outputs)
+    , Html.ul [] ( htmlFromDict model.outputs viewOutput )
     ]
 
-htmlFromInputs : Inputs -> List (Html Msg)
-htmlFromInputs inputs =
-  (List.map viewInput (entriesFromDict inputs))
+htmlFromDict : Dict comparable b -> ((comparable, b) -> Html Msg) -> List (Html Msg)
+htmlFromDict dict viewItem =
+  ( List.map viewItem ( entriesFromDict dict ) )
 
 entriesFromDict : Dict comparable b -> List (comparable, b)
 entriesFromDict dict =
-  List.map2 (\u -> \v -> (u, v)) (Dict.keys dict) (Dict.values dict)
+  List.map2 ( \u -> \v -> ( u, v ) ) ( Dict.keys dict ) ( Dict.values dict )
 
 radio : String -> msg -> Html msg
 radio value msg =
   Html.label
-    [ style [("padding", "20px")]
+    [ style [ ( "padding", "20px" ) ]
     ]
     [ Html.input [ type_ "radio", name "new-input-domain-type", onClick msg ] []
     , Html.text value
@@ -170,15 +171,15 @@ radio value msg =
 viewInput : (String, InputDomain) -> Html Msg
 viewInput ( name, domain ) =
   Html.li []
-    [ Html.text (name ++ " ∈ " ++ stringFromDomain domain)
-    , Html.button [ onClick (DeleteInput name) ] [ Html.text "x" ]
+    [ Html.text ( name ++ " ∈ " ++ stringFromDomain domain )
+    , Html.button [ onClick ( DeleteInput name ) ] [ Html.text "x" ]
     ]
 
 stringFromDomain : InputDomain -> String
 stringFromDomain domain =
   case domain of
-    Range min max -> "[" ++ (toString min) ++ ", " ++ (toString max) ++ "]"
-    Variants vs -> "{" ++ (String.join ", " (List.map toString vs)) ++ "}"
+    Range min max -> "[" ++ ( toString min ) ++ ", " ++ ( toString max ) ++ "]"
+    Variants vs -> "{" ++ ( String.join ", " ( List.map toString vs ) ) ++ "}"
     Real -> "ℝ"
     Integer -> "ℤ"
     Natural -> "ℕ"
@@ -188,12 +189,15 @@ viewNewInputDomain domain =
   case domain of
     Range min max -> 
       Html.div []
-        [ Html.input [ placeholder "-1", onInput (validateFloat (\it -> SetNewInputDomain (Range it max))) ] []
-        , Html.input [ placeholder "1", onInput (validateFloat (\it -> SetNewInputDomain (Range min it))) ] []
+        [ Html.input [ placeholder "-1", onInput ( validateFloat ( \it -> SetNewInputDomain ( Range it max ) ) ) ] []
+        , Html.input [ placeholder "1", onInput ( validateFloat ( \it -> SetNewInputDomain ( Range min it ) ) ) ] []
         ]
     Variants vs ->
       Html.div []
-        [ Html.input [ placeholder "2.7, 1.5, 3", onInput (validateCommaSeparatedFloats (\vs -> SetNewInputDomain (Variants vs))) ] []
+        [ Html.input 
+            [ placeholder "2.7, 1.5, 3"
+            , onInput ( validateCommaSeparatedFloats ( \vs -> SetNewInputDomain ( Variants vs ) ) )
+            ] []
         ]
     -- https://en.wikipedia.org/wiki/Mathematical_operators_and_symbols_in_Unicode
     Real -> Html.text "ℝ"
@@ -208,26 +212,26 @@ validateFloat viewFun str =
 
 validateCommaSeparatedFloats : (List Float -> Msg) -> String -> Msg
 validateCommaSeparatedFloats viewFun str =
-  let (goods, bads) = str
+  let ( goods, bads ) = str
     |> String.split ","
     |> List.map String.trim
-    |> List.filter (not << String.isEmpty)
+    |> List.filter ( not << String.isEmpty )
     |> List.map String.toFloat
-    |> List.partition (\mbF -> case mbF of
+    |> List.partition ( \mbF -> case mbF of
         Ok _ -> True
         Err _ -> False )
   in case bads of
     [] -> let vs = 
             goods
               |> List.map Result.toMaybe
-              |> List.map (Maybe.withDefault 9999999) -- fixme: partition does not extact values :(
+              |> List.map ( Maybe.withDefault 9999999 ) -- fixme: partition does not extact values :(
           in viewFun vs
-    _ -> ShowError ("could not parse variants from: " ++ (toString bads))
+    _ -> ShowError ( "could not parse variants from: " ++ ( toString bads ) )
       
 
-viewOutput : Output -> Html Msg
-viewOutput { name, x, y } =
-  Html.li [] [ Html.text (name ++ " = " ++ y ++ "(" ++ x ++ ")" ) ]
+viewOutput : (String, { x: AxisDeclaration, y: AxisDeclaration }) -> Html Msg
+viewOutput ( name, { x, y } ) =
+  Html.li [] [ Html.text (name ++ " = " ++ y.name ++ "(" ++ x.name ++ ")" ) ]
 
 
 -- parameter selector
@@ -236,7 +240,7 @@ viewSelect : Model -> Html Msg
 viewSelect model =
   Html.div []
     [ Html.h2 [] [ Html.text "Select" ]
-    , Html.ul [] (htmlFromInputs model.inputs)
+    , Html.ul [] ( htmlFromDict model.inputs viewInput )
     ]
 
 
@@ -246,11 +250,11 @@ viewXplore : Model -> Html Msg
 viewXplore model =
   Html.div []
     [ Html.h2 [] [ Html.text "Xplore" ]
-    , Html.ul [] (List.map viewXploreOutput model.outputs)
+    , Html.ul [] ( htmlFromDict model.outputs viewXploreOutput )
     ]
 
-viewXploreOutput : Output -> Html Msg
-viewXploreOutput { name, x, y } =
+viewXploreOutput : (String, { x: AxisDeclaration, y: AxisDeclaration }) -> Html Msg
+viewXploreOutput ( name, _ ) =
   Html.li [] [ Html.text name ]
 
 
