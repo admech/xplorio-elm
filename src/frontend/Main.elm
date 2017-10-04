@@ -25,8 +25,8 @@ type alias Model =
   , outputs : Outputs
   , calculation : List InputValue -> Data
     -- Forms
-  , newInputName : String
-  , newInputDomain : InputDomain
+  , newInputName : String, newInputDomain : InputDomain
+  , newOutputName : String, newOutputXName : String, newOutputYName : String, newOutputXMapping : String, newOutputYMapping : String
     -- Error handling
   , error : Maybe String
   }
@@ -60,8 +60,13 @@ init =
             , ys = List.map (\x -> x * x) xs_
             }
       -- Forms
-    , newInputName = "input name"
+    , newInputName = "name"
     , newInputDomain = Range -1 1
+    , newOutputName = "name"
+    , newOutputXName = "x"
+    , newOutputYName = "y"
+    , newOutputXMapping = "A"
+    , newOutputYMapping = "B"
       -- Error handling
     , error = Nothing
     }
@@ -79,6 +84,16 @@ type Msg
   | EnterInputName String
   | SetNewInputDomain InputDomain
   | DeleteInput String
+  | EnterOutput OutputParameter
+  | AddOutput
+  | DeleteOutput String
+
+type OutputParameter 
+  = OutputName String
+  | OutputXName String
+  | OutputYName String
+  | OutputXMapping String
+  | OutputYMapping String
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -103,8 +118,35 @@ update msg model =
     DeleteInput name ->
       ( { model | inputs = Dict.remove name model.inputs }
       , Cmd.none
-      )      
+      )  
+    EnterOutput outputParameter ->
+      ( enterOutput model outputParameter
+      , Cmd.none
+      )
+    AddOutput ->
+      ( { model | outputs 
+          = Dict.insert model.newOutputName 
+            { x = AxisDeclaration model.newOutputXName model.newOutputXMapping
+            , y = AxisDeclaration model.newOutputYName model.newOutputYMapping
+            }
+            model.outputs
+        }
+      , Cmd.none
+      )
+    DeleteOutput name ->
+      ( { model | outputs = Dict.remove name model.outputs }
+      , Cmd.none
+      )  
 
+enterOutput : Model -> OutputParameter -> Model
+enterOutput model outputParameter =
+  case outputParameter of
+    OutputName name -> { model | newOutputName = name }
+    OutputXName xN -> { model | newOutputXName = xN }
+    OutputYName yN -> { model | newOutputYName = yN }
+    OutputXMapping xM -> { model | newOutputXMapping = xM }
+    OutputYMapping yM -> { model | newOutputYMapping = yM }
+      
 
 
 -- VIEW
@@ -137,18 +179,10 @@ viewDefine model =
     [ Html.h2 [] [ Html.text "Define" ]
     , Html.h3 [] [ Html.text "Inputs:" ]
     , Html.ul [] ( htmlFromDict model.inputs viewInput )
-    , Html.fieldset []
-        [ radio "Real" ( SetNewInputDomain Real )
-        , radio "Integer" ( SetNewInputDomain Integer )
-        , radio "Natural" ( SetNewInputDomain Natural )
-        , radio "Range" ( SetNewInputDomain ( Range -1 1 ) )
-        , radio "Variants" ( SetNewInputDomain ( Variants [ 1, 2, 3 ] ) )
-        ]
-    , Html.input [ placeholder model.newInputName, onInput EnterInputName ] []
-    , viewNewInputDomain model.newInputDomain
-    , Html.button [ onClick AddInput ] [ Html.text "Add" ] 
+    , viewAddInput model
     , Html.h3 [] [ Html.text "Outputs:" ]
     , Html.ul [] ( htmlFromDict model.outputs viewOutput )
+    , viewAddOutput model
     ]
 
 htmlFromDict : Dict comparable b -> ((comparable, b) -> Html Msg) -> List (Html Msg)
@@ -184,25 +218,39 @@ stringFromDomain domain =
     Integer -> "ℤ"
     Natural -> "ℕ"
 
-viewNewInputDomain : InputDomain -> Html Msg
+viewAddInput : Model -> Html Msg
+viewAddInput model =
+  Html.div []
+    ( [ Html.fieldset []
+          [ radio "Real" ( SetNewInputDomain Real )
+          , radio "Integer" ( SetNewInputDomain Integer )
+          , radio "Natural" ( SetNewInputDomain Natural )
+          , radio "Range" ( SetNewInputDomain ( Range -1 1 ) )
+          , radio "Variants" ( SetNewInputDomain ( Variants [ 1, 2, 3 ] ) )
+          ]
+      ]
+    ++ [ Html.input [ placeholder model.newInputName, onInput EnterInputName ] [] ]
+    ++ ( viewNewInputDomain model.newInputDomain )
+    ++ [ Html.button [ onClick AddInput ] [ Html.text "Add" ] ]
+    )
+
+viewNewInputDomain : InputDomain -> List ( Html Msg )
 viewNewInputDomain domain = 
   case domain of
     Range min max -> 
-      Html.div []
-        [ Html.input [ placeholder "-1", onInput ( validateFloat ( \it -> SetNewInputDomain ( Range it max ) ) ) ] []
-        , Html.input [ placeholder "1", onInput ( validateFloat ( \it -> SetNewInputDomain ( Range min it ) ) ) ] []
-        ]
+      [ Html.input [ placeholder "-1", onInput ( validateFloat ( \it -> SetNewInputDomain ( Range it max ) ) ) ] []
+      , Html.input [ placeholder "1", onInput ( validateFloat ( \it -> SetNewInputDomain ( Range min it ) ) ) ] []
+      ]
     Variants vs ->
-      Html.div []
-        [ Html.input 
-            [ placeholder "2.7, 1.5, 3"
-            , onInput ( validateCommaSeparatedFloats ( \vs -> SetNewInputDomain ( Variants vs ) ) )
-            ] []
-        ]
+      [ Html.input 
+          [ placeholder "2.7, 1.5, 3"
+          , onInput ( validateCommaSeparatedFloats ( \vs -> SetNewInputDomain ( Variants vs ) ) )
+          ] []
+      ]
     -- https://en.wikipedia.org/wiki/Mathematical_operators_and_symbols_in_Unicode
-    Real -> Html.text "ℝ"
-    Integer -> Html.text "ℤ"
-    Natural -> Html.text "ℕ"
+    Real -> [ Html.text "ℝ" ]
+    Integer -> [ Html.text "ℤ" ]
+    Natural -> [ Html.text "ℕ" ]
 
 validateFloat : (Float -> Msg) -> String -> Msg
 validateFloat viewFun str =
@@ -231,7 +279,22 @@ validateCommaSeparatedFloats viewFun str =
 
 viewOutput : (String, { x: AxisDeclaration, y: AxisDeclaration }) -> Html Msg
 viewOutput ( name, { x, y } ) =
-  Html.li [] [ Html.text (name ++ " = " ++ y.name ++ "(" ++ x.name ++ ")" ) ]
+  Html.li []
+    [ Html.text (name ++ " = " ++ y.name ++ "(" ++ x.name ++ ")" )
+    , Html.button [ onClick ( DeleteOutput name ) ] [ Html.text "x" ]
+    ]
+
+viewAddOutput : Model -> Html Msg
+viewAddOutput model =
+  Html.div []
+    [ Html.input [ placeholder model.newOutputName, onInput ( \it -> EnterOutput ( OutputName it ) ) ] []
+    , Html.input [ placeholder model.newOutputXName, onInput ( \it -> EnterOutput ( OutputXName it ) ) ] []
+    , Html.input [ placeholder model.newOutputYName, onInput ( \it -> EnterOutput ( OutputYName it ) ) ] []
+    , Html.input [ placeholder model.newOutputXMapping, onInput ( \it -> EnterOutput ( OutputXMapping it ) ) ] []
+    , Html.input [ placeholder model.newOutputYMapping, onInput ( \it -> EnterOutput ( OutputYMapping it ) ) ] []
+    , Html.button [ onClick AddOutput ] [ Html.text "Add" ] 
+    ]
+    
 
 
 -- parameter selector
