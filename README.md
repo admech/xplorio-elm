@@ -35,7 +35,7 @@ Now go get the models running!
     3. ~~adding and removing `output`s,~~
     4. defining the calculation:
          entering a github repo and showing how it will be launched,
-    5. defining a mapping from the generated data to `output` values.
+    5. ~~defining a mapping from the generated CSV to `output` values.~~
 2. Select:
     1. displaying `input` domains,
     2. selecting subsets of `input` domains,
