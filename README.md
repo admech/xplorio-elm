@@ -36,9 +36,12 @@ Now go get the models running!
     4. defining the calculation:
          entering a github repo and showing how it will be launched,
     5. ~~defining a mapping from the generated CSV to `output` values.~~
+    6. defining a template of the input file
 2. Select:
     1. displaying `input` domains,
-    2. selecting subsets of `input` domains,
+    2. selecting subsets of `input` domains:
+         ~~variants,~~
+         sub-ranges;
     3. showing `wanted`, `in progress` and `available` subsets.
 3. Explore:
     1. charting `output` values,

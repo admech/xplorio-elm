@@ -4,6 +4,7 @@ import Html.Events exposing (..)
 import Svg
 import Svg.Attributes
 import Dict exposing (Dict)
+import Set exposing (Set)
 
 
 main =
@@ -23,42 +24,58 @@ type alias Model =
   { -- Description
     inputs : Inputs
   , outputs : Outputs
-  , calculation : List InputValue -> Data
+  , calculation : Calculation
     -- Forms
   , newInputName : String, newInputDomain : InputDomain
   , newOutputName : String, newOutputXName : String, newOutputYName : String, newOutputXMapping : String, newOutputYMapping : String
+    -- Select
+  , selected : Selected
+  , stagedForSelection : StagedForSelection
     -- Error handling
   , error : Maybe String
   }
 
-type alias Inputs = Dict String InputDomain
+type alias Inputs = Parameters InputDomain
 type InputDomain
   = Range Float Float 
-  | Variants (List Float)
+  | Variants ( List Float )
   | Real | Integer | Natural
+type InputDomainInstance
+  = SubRange Float Float
+  | Variant Float
 type alias InputValue = Float
-type alias Outputs = Dict String { x : AxisDeclaration, y : AxisDeclaration }
+type alias Outputs = Parameters { x : AxisDeclaration, y : AxisDeclaration }
 type alias AxisDeclaration = { name : String, valueMapping : String }
 type alias Data = { xs : List Float, ys : List Float }
+type alias Calculation = List InputValue -> Data
+-- nope, Elm doesn't let you use your stuff as keys
+type alias Selected = { subRanges : Parameters ( Set ( Float, Float ) )
+                      , variants : Parameters ( Set Float )
+                      }
+type alias StagedForSelection = { subRanges : Parameters ( Float, Float )
+                                , variants : Parameters Float
+                                }
+type alias Parameters a = Dict String a
 
 init : (Model, Cmd Msg)
 init =
   ( { -- Description
       inputs = Dict.fromList
-        [ ( "phi0", Range -1 1 )
-        , ( "t_max", Variants [ 10, 100, 1000 ] )
+        [ ( "exp", Variants [ 1, 2, 1/2 ] )
+        , ( "N", Natural )
         ]
     , outputs = Dict.fromList
-        [ ( "angle", { x = AxisDeclaration "time" "A", y = AxisDeclaration "phi" "B" } )
-        , ( "velocity", { x = AxisDeclaration "time" "A", y = AxisDeclaration "Dphi" "C" } )
-        , ( "phase", { x = AxisDeclaration "phi" "B", y = AxisDeclaration "Dphi" "C" } )
+        [ ( "base^exp", { x = AxisDeclaration "base" "A", y = AxisDeclaration "power" "B" } )
         ]
     , calculation =
-        \_ ->
-          let xs_ = [ 0, 1, 2, 3, 4, 5, 4, 3, 2, 1 ] in
-            { xs = xs_
-            , ys = List.map (\x -> x * x) xs_
-            }
+        \inputs ->
+          case inputs of
+            [ exp, n ] ->
+              let xs_ = List.map toFloat (makelist 1 (round n)) in
+                { xs = xs_
+                , ys = List.map (\x -> x ^ exp) xs_
+                }
+            _ -> { xs = [], ys = [] }
       -- Forms
     , newInputName = "name"
     , newInputDomain = Range -1 1
@@ -67,12 +84,17 @@ init =
     , newOutputYName = "y"
     , newOutputXMapping = "A"
     , newOutputYMapping = "B"
+      -- Select
+    , selected = { subRanges = Dict.empty, variants = Dict.empty }
+    , stagedForSelection = { subRanges = Dict.empty, variants = Dict.empty }
       -- Error handling
     , error = Nothing
     }
   , Cmd.none
   )
 
+makelist : Int -> Int -> List Int
+makelist first last = first :: makelist (first + 1) last
 
 -- UPDATE
 
@@ -87,6 +109,8 @@ type Msg
   | EnterOutput OutputParameter
   | AddOutput
   | DeleteOutput String
+  | ToggleSelection String InputDomainInstance
+  | ValidateOrSelect String InputDomain InputDomainInstance
 
 type OutputParameter 
   = OutputName String
@@ -137,6 +161,14 @@ update msg model =
       ( { model | outputs = Dict.remove name model.outputs }
       , Cmd.none
       )  
+    ToggleSelection name inputDomainInstance ->
+      ( { model | selected = toggleSelection name inputDomainInstance model.selected }
+      , Cmd.none
+      )
+    ValidateOrSelect name domain inputDomainInstance ->
+      ( { model | stagedForSelection = stageForSelection name domain inputDomainInstance model.stagedForSelection }
+      , Cmd.none
+      )
 
 enterOutput : Model -> OutputParameter -> Model
 enterOutput model outputParameter =
@@ -147,8 +179,37 @@ enterOutput model outputParameter =
     OutputXMapping xM -> { model | newOutputXMapping = xM }
     OutputYMapping yM -> { model | newOutputYMapping = yM }
       
-
-
+toggleSelection : String -> InputDomainInstance -> Selected -> Selected
+toggleSelection name inputDomainInstance selected =
+  case inputDomainInstance of
+  
+    Variant v -> 
+      let currentSelection = case Dict.get name selected.variants of
+        Just it -> it
+        Nothing -> Set.empty
+      in
+        let doTheThing = if not ( Set.member v currentSelection ) then Set.insert else Set.remove in
+          let newVariants = Dict.insert name ( doTheThing v currentSelection ) selected.variants
+          in { selected | variants = newVariants }
+  
+    _ -> selected
+      
+stageForSelection : String -> InputDomain -> InputDomainInstance -> StagedForSelection -> StagedForSelection
+stageForSelection name domain inputDomainInstance staged =
+  case domain of
+    Natural ->
+      case inputDomainInstance of
+      
+        Variant v -> 
+          let newVariants = Dict.insert name v staged.variants
+          in { staged | variants = newVariants }
+        
+        -- nothing to be done for other domain instances
+        _ -> staged
+      
+    -- nothing to be done for other domains
+    _ -> staged
+      
 -- VIEW
 
 
@@ -178,15 +239,15 @@ viewDefine model =
   Html.div []
     [ Html.h2 [] [ Html.text "Define" ]
     , Html.h3 [] [ Html.text "Inputs:" ]
-    , Html.ul [] ( htmlFromDict model.inputs viewInput )
+    , Html.ul [] ( htmlFromDict viewInput model.inputs )
     , viewAddInput model
     , Html.h3 [] [ Html.text "Outputs:" ]
-    , Html.ul [] ( htmlFromDict model.outputs viewOutput )
+    , Html.ul [] ( htmlFromDict viewOutput model.outputs )
     , viewAddOutput model
     ]
 
-htmlFromDict : Dict comparable b -> ((comparable, b) -> Html Msg) -> List (Html Msg)
-htmlFromDict dict viewItem =
+htmlFromDict : ((comparable, b) -> Html Msg) -> Dict comparable b -> List (Html Msg)
+htmlFromDict viewItem dict =
   ( List.map viewItem ( entriesFromDict dict ) )
 
 entriesFromDict : Dict comparable b -> List (comparable, b)
@@ -198,7 +259,7 @@ radio value msg =
   Html.label
     [ style [ ( "padding", "20px" ) ]
     ]
-    [ Html.input [ type_ "radio", name "new-input-domain-type", onClick msg ] []
+    [ Html.input [ type_ "radio", onClick msg ] []
     , Html.text value
     ]
 
@@ -303,9 +364,44 @@ viewSelect : Model -> Html Msg
 viewSelect model =
   Html.div []
     [ Html.h2 [] [ Html.text "Select" ]
-    , Html.ul [] ( htmlFromDict model.inputs viewInput )
+    , Html.ul [] ( htmlFromDict ( viewSelectInput model.stagedForSelection ) model.inputs )
     ]
 
+viewSelectInput : StagedForSelection -> (String, InputDomain) -> Html Msg
+viewSelectInput staged ( name, domain ) =
+  Html.li []
+    [ Html.text name
+    , viewSelectDomain name domain staged
+    ]
+
+viewSelectDomain : String -> InputDomain -> StagedForSelection -> Html Msg
+viewSelectDomain name domain staged = 
+  case domain of
+    Variants vs -> 
+      Html.fieldset []
+        ( List.map ( \v -> checkbox ( toString v ) ( ToggleSelection name ( Variant v ) ) ) vs )
+    
+    Natural -> 
+      let ( buttonOnClick, buttonDisabled ) = case Dict.get name staged.variants of
+        Just value -> ( ToggleSelection name ( Variant value ), False )
+        Nothing -> ( DoNothing, True )
+      in
+        Html.div []
+          [ Html.input [ placeholder "10", onInput ( validateFloat ( \value -> ( ValidateOrSelect name domain ( Variant value ) ) ) ) ] []
+          , Html.button [ onClick buttonOnClick, disabled buttonDisabled ] [ Html.text "Toggle" ] 
+          ]
+    
+    _ -> 
+      Html.text " - not supported type of domain"
+
+checkbox : String -> msg -> Html msg
+checkbox value msg =
+  Html.label
+    [ style [ ( "padding", "20px" ) ]
+    ]
+    [ Html.input [ type_ "checkbox", onClick msg ] []
+    , Html.text value
+    ]
 
 -- xplore area: parameter selector + charts of variables
 
@@ -313,7 +409,7 @@ viewXplore : Model -> Html Msg
 viewXplore model =
   Html.div []
     [ Html.h2 [] [ Html.text "Xplore" ]
-    , Html.ul [] ( htmlFromDict model.outputs viewXploreOutput )
+    , Html.ul [] ( htmlFromDict viewXploreOutput model.outputs )
     ]
 
 viewXploreOutput : (String, { x: AxisDeclaration, y: AxisDeclaration }) -> Html Msg
