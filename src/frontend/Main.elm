@@ -140,9 +140,18 @@ update msg model =
       , Cmd.none
       )
     DeleteInput name ->
-      ( { model | inputs = Dict.remove name model.inputs }
-      , Cmd.none
-      )  
+      let clear = \holder -> { holder
+                             | variants = Dict.remove name holder.variants
+                             , subRanges = Dict.remove name holder.subRanges
+                             }
+      in
+        ( { model
+          | inputs = Dict.remove name model.inputs
+          , selected = clear model.selected
+          , stagedForSelection = clear model.stagedForSelection
+          }
+        , Cmd.none
+        )  
     EnterOutput outputParameter ->
       ( enterOutput model outputParameter
       , Cmd.none
