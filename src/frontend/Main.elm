@@ -364,18 +364,18 @@ viewSelect : Model -> Html Msg
 viewSelect model =
   Html.div []
     [ Html.h2 [] [ Html.text "Select" ]
-    , Html.ul [] ( htmlFromDict ( viewSelectInput model.stagedForSelection ) model.inputs )
+    , Html.ul [] ( htmlFromDict ( viewSelectInput model.stagedForSelection model.selected ) model.inputs )
     ]
 
-viewSelectInput : StagedForSelection -> (String, InputDomain) -> Html Msg
-viewSelectInput staged ( name, domain ) =
+viewSelectInput : StagedForSelection -> Selected -> (String, InputDomain) -> Html Msg
+viewSelectInput staged selected ( name, domain ) =
   Html.li []
     [ Html.text name
-    , viewSelectDomain name domain staged
+    , viewSelectDomain name domain staged selected
     ]
 
-viewSelectDomain : String -> InputDomain -> StagedForSelection -> Html Msg
-viewSelectDomain name domain staged = 
+viewSelectDomain : String -> InputDomain -> StagedForSelection -> Selected -> Html Msg
+viewSelectDomain name domain staged selected = 
   case domain of
     Variants vs -> 
       Html.fieldset []
@@ -386,11 +386,23 @@ viewSelectDomain name domain staged =
         Just value -> ( ToggleSelection name ( Variant value ), False )
         Nothing -> ( DoNothing, True )
       in
-        Html.div []
-          [ Html.input [ placeholder "10", onInput ( validateFloat ( \value -> ( ValidateOrSelect name domain ( Variant value ) ) ) ) ] []
-          , Html.button [ onClick buttonOnClick, disabled buttonDisabled ] [ Html.text "Toggle" ] 
-          ]
-    
+        let selectedItems = case Dict.get name selected.variants of
+          Just items ->
+            items 
+              |> Set.toList
+              |> List.map toString 
+              |> String.join ", "
+          Nothing -> "Nothing selected yet"
+        in
+          Html.div []
+            [ Html.div []
+                [ Html.text selectedItems
+                ]
+            , Html.div []
+                [ Html.input [ placeholder "10", onInput ( validateFloat ( \value -> ( ValidateOrSelect name domain ( Variant value ) ) ) ) ] []
+                , Html.button [ onClick buttonOnClick, disabled buttonDisabled ] [ Html.text "Toggle" ] 
+                ]
+            ]    
     _ -> 
       Html.text " - not supported type of domain"
 
