@@ -254,13 +254,13 @@ entriesFromDict : Dict comparable b -> List (comparable, b)
 entriesFromDict dict =
   List.map2 ( \u -> \v -> ( u, v ) ) ( Dict.keys dict ) ( Dict.values dict )
 
-radio : String -> msg -> Html msg
-radio value msg =
+radio : String -> String -> msg -> Html msg
+radio groupName caption msg =
   Html.label
     [ style [ ( "padding", "20px" ) ]
     ]
-    [ Html.input [ type_ "radio", onClick msg ] []
-    , Html.text value
+    [ Html.input [ type_ "radio", name groupName, onClick msg ] []
+    , Html.text caption
     ]
 
 viewInput : (String, InputDomain) -> Html Msg
@@ -283,12 +283,13 @@ viewAddInput : Model -> Html Msg
 viewAddInput model =
   Html.div []
     ( [ Html.fieldset []
-          [ radio "Real" ( SetNewInputDomain Real )
-          , radio "Integer" ( SetNewInputDomain Integer )
-          , radio "Natural" ( SetNewInputDomain Natural )
-          , radio "Range" ( SetNewInputDomain ( Range -1 1 ) )
-          , radio "Variants" ( SetNewInputDomain ( Variants [ 1, 2, 3 ] ) )
-          ]
+          ( let radioGroup = radio "new-input-type" in
+            [ radioGroup  "Real"     ( SetNewInputDomain Real )
+            , radioGroup  "Integer"  ( SetNewInputDomain Integer )
+            , radioGroup  "Natural"  ( SetNewInputDomain Natural )
+            , radioGroup  "Range"    ( SetNewInputDomain ( Range -1 1 ) )
+            , radioGroup  "Variants" ( SetNewInputDomain ( Variants [ 1, 2, 3 ] ) )
+            ] )
       ]
     ++ [ Html.input [ placeholder model.newInputName, onInput EnterInputName ] [] ]
     ++ ( viewNewInputDomain model.newInputDomain )
